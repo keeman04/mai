@@ -7,6 +7,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   verify-and-build:
     runs-on: ubuntu-latest
@@ -54,9 +57,21 @@ jobs:
         run: |
           gradle :app:assembleDebug -PMAI_BACKEND_URL="$MAI_BACKEND_URL" -PMAI_GATEWAY_TOKEN="$MAI_GATEWAY_TOKEN"
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: MAI-V1.1-Tamil-debug-apk
           path: MAI-V1.1-Tamil/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Publish verified APK to repository
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          mkdir -p builds
+          cp MAI-V1.1-Tamil/android/app/build/outputs/apk/debug/app-debug.apk builds/MAI-V1.1-Tamil-debug.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f builds/MAI-V1.1-Tamil-debug.apk
+          git diff --cached --quiet || git commit -m "Publish verified MAI V1.1 Tamil debug APK"
+          git push
